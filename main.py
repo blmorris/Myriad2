@@ -2,9 +2,11 @@
 # import pyb	# not necessary if declared in boot.py
 from pyb import I2C
 
+
 from pyb import DAC, ADC, Timer, RTC
+i2c = I2C(1,I2C.MASTER)
 class DSP:
-    def __init__(self):
+    def __init__(self, i2c):
         sdsp_n_reset = pyb.Pin('A6', pyb.Pin.OUT_OD)
         sdsp_n_reset.high()
         pyb.delay(10)
@@ -12,7 +14,7 @@ class DSP:
         pyb.delay(10)
         sdsp_n_reset.high()
         pyb.delay(10)
-        self.i2c = I2C(1, I2C.MASTER)
+        self.i2c = i2c
     def dsp_send_i2c(self,addr,data):
         self.i2c.send(bytes([addr, data]), 0x34)
     def start_up(self):
@@ -34,12 +36,15 @@ class DSP:
 # pyb.delay(100)
 
 
+
+
 # pyb.I2C(1).mem_write(0x60,0x01,0xC0)
 # pyb.I2C(1).mem_write(0x60,0x02,0x3F)
 # pyb.I2C(1).mem_read(0x60,0x01,4)
 
+
 class Microphone:
-    def __init__(self):
+    def __init__(self, i2c):
         mic_n_reset = pyb.Pin('A7', pyb.Pin.OUT_OD)
         mic_n_reset.high()
         pyb.delay(10)
@@ -47,11 +52,9 @@ class Microphone:
         pyb.delay(10)
         mic_n_reset.high()
         pyb.delay(10)
-        self.i2c = I2C(1,I2C.MASTER)
-
+        self.i2c = i2c
     def mic_send_i2c(self,addr,data):
         self.i2c.send(bytes([addr, data]), 0x18)
-
     def start_up(self):
         self.mic_send_i2c(0x00,0x00)
         self.mic_send_i2c(0x01,0x01)
@@ -59,15 +62,19 @@ class Microphone:
         self.mic_send_i2c(0x05,0x91)
         self.mic_send_i2c(0x06,0x20)
 
+
         self.mic_send_i2c(0x12,0x88)
         self.mic_send_i2c(0x13,0x82)
+
 
         self.mic_send_i2c(0x1a,0xaa)
         self.mic_send_i2c(0x3b,0x50)
         self.mic_send_i2c(0x3c,0x50)
 
+
         self.mic_send_i2c(0x51,0xC0)
         self.mic_send_i2c(0x52,0x00)
+
 
         self.mic_send_i2c(0x00,0x01)
         self.mic_send_i2c(0x1a,0x00)
@@ -78,6 +85,19 @@ class Microphone:
         self.mic_send_i2c(0x39,0x3F)
         self.mic_send_i2c(0x3b,0x40)
         self.mic_send_i2c(0x3c,0x40)
+'''
+class GPIO:
+	def __init__(self, i2c):
+		g = pyb.Pin('A13', pyb.Pin.OUT_PP)
+		g.high()
+        pyb.delay(10)
+        g.low()
+        pyb.delay(10)
+        g.high()
+        pyb.delay(10)
+        self.i2c = i2c
+	'''
+
 
 # volume control
 tim = Timer(1)
@@ -85,11 +105,30 @@ tim.init(freq = 20)
 dac = DAC(1)
 pot = ADC('B0')
 tim.callback(lambda t: dac.write(int(pot.read()>>4)))
+
+#GPIO test
+g = pyb.Pin('A13', pyb.Pin.OUT_PP)
+g.high()
+pyb.delay(10)
+g.low()
+pyb.delay(10)
+g.high()
+pyb.delay(10)
+i2c.mem_write(0xF0,0x20,0x00)
+i2c.mem_write(0x0F,0x20,0x0A)
+
+def button():
+	s = i2c.mem_read(1,0x20,0x09)
+	f = s[0]>>4
+	f = f|0x0F
+	i2c.mem_write(f,0x20,0x0A)
 	
-'''
+
 ti = Timer(2)
-ti.init(freq = 5)
-'''
+ti.init(freq = 10)
+ti.callback(button())
+
+
 def rail_voltage():
     vp = ADC('B1')
     num = (3.3/4096)*(53.22/3.32)
@@ -105,7 +144,7 @@ def power_stat():
 		pyb.LED(3).toggle()
 ti.callback(power_stat())
 '''
-i2c = I2C(1,I2C.MASTER)
+
 def mic_rms_dB(i2c):
     i2c.mem_write(bytes([0x06,0x8E]), 0x34,2074,use_16bit_addr=True)
     buf = bytearray(3)
@@ -115,6 +154,7 @@ def mic_rms_dB(i2c):
         return val * 10
     else:
         return (val - 32.0) * 10
+
 
 class Amplifier:
     def __init__(self):
@@ -134,6 +174,7 @@ class Amplifier:
     def unmute(self):
         self.mute_one.low()
         self.mute_two.low()
+
 
 class date_time:
     def __init__(self):
@@ -183,8 +224,9 @@ class date_time:
 
 
 
-
-dsp = DSP()
+pyb.LED(2).toggle()
+dsp = DSP(i2c)
 dsp.start_up()
-mic = Microphone()
+mic = Microphone(i2c)
 mic.start_up()
+pyb.LED(2).toggle()
