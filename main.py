@@ -15,18 +15,33 @@ class DSP:
         sdsp_n_reset.high()
         pyb.delay(10)
         self.i2c = i2c
+        f = open('FullBinary.bin','rb')
+        self.buf=f.read()
+        f.close()
+        self.switches = {'Audin_Switch' : [0x2A, 0x2B], 'EQ_Bypass_SW' : [0xFD, 0xFE]}
+        self.switch_side = {'DIRECT': 0, 'I2S': 1, 'NO_EQ' : 0, 'EQ' : 1}
     def dsp_send_i2c(self,addr,data):
         self.i2c.send(bytes([addr, data]), 0x34)
     def start_up(self):
-        f = open('FullBinary.bin','rb')
-        buf=f.read()
-        f.close()
-        self.i2c.send( bytes(buf[0:4]), 0x34)
-        self.i2c.send( bytes(buf[4:5126]), 0x34)
-        self.i2c.send( bytes(buf[5126:9224]), 0x34)
-        self.i2c.send( bytes(buf[9224:9250]), 0x34)
-        self.i2c.send( bytes(buf[9250:9254]), 0x34)
-
+        self.i2c.send( bytes(self.buf[0:4]), 0x34)
+        self.i2c.send( bytes(self.buf[4:5126]), 0x34)
+        self.i2c.send( bytes(self.buf[5126:9224]), 0x34)
+        self.i2c.send( bytes(self.buf[9224:9250]), 0x34)
+        self.i2c.send( bytes(self.buf[9250:9254]), 0x34)
+    def change_switch(self, switch, side_on):
+        s_on = [0x00,self.switches[switch][self.switch_side[side_on]] , 0x00, 0x80, 0x00, 0x00]
+        s_off = [0x00,self.switches[switch][(self.switch_side[side_on]+1)%2] , 0x00, 0x00, 0x00, 0x00]
+        self.i2c.send(bytes(s_on),0x34)
+        self.i2c.send(bytes(s_off),0x34)
+'''
+    def Audin_Switch(self):
+        self.i2c.send(bytes([0x00, 0x2A, 0x00, 0x80, 0x00, 0x00]),0x34)
+        self.i2c.send(bytes([0x00, 0x2B, 0x00, 0x00, 0x00, 0x00]),0x34)
+    def Audin_Switch_I2S(self):
+        self.i2c.send(bytes([0x00, 0x2A, 0x00, 0x00, 0x00, 0x00]),0x34)
+        self.i2c.send(bytes([0x00, 0x2B, 0x00, 0x80, 0x00, 0x00]),0x34)
+		'''
+		
 # pyb.gpio_out('B3',pyb.PUSH_PULL)
 # pyb.gpio('B3',1)
 # pyb.delay(100)
@@ -107,27 +122,30 @@ pot = ADC('B0')
 tim.callback(lambda t: dac.write(int(pot.read()>>4)))
 
 #GPIO test
-g = pyb.Pin('A13', pyb.Pin.OUT_PP)
-g.high()
+gpio = pyb.Pin('A13', pyb.Pin.OUT_PP)
+gpio.high()
 pyb.delay(10)
-g.low()
+gpio.low()
 pyb.delay(10)
-g.high()
+gpio.high()
 pyb.delay(10)
+
 i2c.mem_write(0xF0,0x20,0x00)
 i2c.mem_write(0x0F,0x20,0x0A)
-
+i2c.mem_write(0xF0, 0x20,0x02)
+i2c.mem_write(0x00, 0x20,0x03 )
+#gpio_int = pyb.ExtInt('A14', pyb.ExtInt.IRQ_RISING, pyb.Pin.PULL_NONE, lambda f : print('press!'))
 def button():
 	s = i2c.mem_read(1,0x20,0x09)
 	f = s[0]>>4
 	f = f^0x0F
 	i2c.mem_write(f,0x20,0x0A)
-	
 
+'''
 ti = Timer(2)
-ti.init(freq = 10)
-ti.callback(button())
-
+ti.init(freq = 1)
+ti.callback(lambda d: i2c.mem_write((i2c.mem_read(1,0x20,0x09)[0]>>4)^0x0F, 0x20, 0x0A))
+'''
 
 def rail_voltage():
     vp = ADC('B1')
@@ -145,10 +163,10 @@ def power_stat():
 ti.callback(power_stat())
 '''
 
-def mic_rms_dB(i2c):
-    i2c.mem_write(bytes([0x06,0x8E]), 0x34,2074,use_16bit_addr=True)
+def mic_rms_dB(i2):
+    i2.mem_write(bytes([0x06,0x8E]), 0x34,2074,addr_size=16)
     buf = bytearray(3)
-    i2c.mem_read(buf,0x34,2074,use_16bit_addr=True)
+    i2c.mem_read(buf,0x34,2074,addr_size=16)
     val = ((buf[0] <<16)+(buf[1]<<8)+buf[2])/2**19
     if val < 16:
         return val * 10
