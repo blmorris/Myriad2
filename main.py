@@ -52,7 +52,6 @@ class DSP:
         data5.insert(0, 0x00)
         data5.insert(1,self.filters[filter-1][4][1])
         self.safeload_write(data1, data2, data3, data4, data5)
-        #this is just a test to see if we can make a noticeable change in the EQ
     def EQ_test(self):
         self.filter_safeload_write(1, [0x00, 	0x5A, 	0x0F, 	0x08], [0xFF, 	0x4D, 	0x4E, 	0x9F], [0x00, 	0x58, 	0xA9, 	0x19], [0x00, 	0xFC, 	0x5E, 	0xC2], [0xFF, 	0x83, 	0x83, 	0x17])
         self.filter_safeload_write(2, [0x00, 	0x7D, 	0xD2, 	0xA5], [0xFF, 	0x06, 	0x8A, 	0xB3], [0x00, 	0x7B, 	0xCF, 	0x1F], [0x00, 	0xF9, 	0x75, 	0x4D], [0xFF, 	0x86, 	0x5E, 	0x3B])
@@ -143,15 +142,30 @@ class GPIO:
         self.i2c = i2c
 	'''
 
-
+sensor = ADC('A0')
+def sensor_distance(unit):
+    if unit == 'm':
+        return ((sensor.read()/2552.3)**(1/-1.045))*.3048
+    elif unit == 'in':
+        return ((sensor.read()/2552.3)**(1/-1.045))*12
+    elif unit == 'cm':
+        return ((sensor.read()/2552.3)**(1/-1.045))*30.48
+    else:
+        return (sensor.read()/2552.3)**(1/-1.045)
+#decrease volume as object gets closer
+def v_change_dis():
+    return 255-int((sensor.read())>>4)
+    #you can get rid of "255-" to make it do the opposite
 # volume control
+
 tim = Timer(1)
 tim.init(freq = 20)
 dac = DAC(1)
 pot = ADC('B0')
-tim.callback(lambda t: dac.write(int(pot.read()>>4)))
-
+#tim.callback(lambda t: dac.write(int(pot.read()>>4)))
+tim.callback(lambda t: dac.write(v_change_dis()))
 #GPIO test
+'''
 gpio = pyb.Pin('A13', pyb.Pin.OUT_PP)
 gpio.high()
 pyb.delay(10)
@@ -173,12 +187,12 @@ def button():
 	f = f^0x0F
 	i2c.mem_write(f,0x20,0x0A)
 
-'''
+
 ti = Timer(2)
 ti.init(freq = 1)
 ti.callback(lambda d: i2c.mem_write((i2c.mem_read(1,0x20,0x09)[0]>>4)^0x0F, 0x20, 0x0A))
-'''
 
+'''
 def rail_voltage():
     vp = ADC('B1')
     num = (3.3/4096)*(53.22/3.32)
@@ -204,7 +218,6 @@ def mic_rms_dB(i2):
         return val * 10
     else:
         return (val - 32.0) * 10
-
 
 class Amplifier:
     def __init__(self):
