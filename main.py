@@ -292,13 +292,12 @@ class date_time:
 datetime = date_time()
 class logger:
     def __init__(self):
-        txt = open('logfile.txt', 'a')
+        txt = open('1:/logfile.txt', 'a')
         txt.close()
         selfdatetime = date_time()
     def write(self, text):
-        txt = open('logfile.txt', 'a')
-        txt.write('%s %s: %s \n' % (datetime.date(), datetime.time(), text))
-        txt.write('\n hublabababab')
+        txt = open('1:/logfile.txt', 'a')
+        txt.write('%s %s: %s \t' % (datetime.date(), datetime.time(), text))
         txt.close()
 
 
@@ -322,9 +321,9 @@ def lights_feet():
 '''
 for i in range(1,500):
     #lights_feet()
-    #button()
-    if num.renum()!=0:
-        button()
-        num.n()
+    button()
+   # if num.renum()!=0:
+    #    button()
+     #   num.n()
     pyb.delay(100)
 '''
