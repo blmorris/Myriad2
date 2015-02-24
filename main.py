@@ -228,20 +228,25 @@ num = stat()
 def call(line):
     # num.num()
     print(line)
+
+''' Needs to be put in class, device not always present
 i2c.mem_write(0xF0, 0x20, 0x00)
 i2c.mem_write(0x0F, 0x20, 0x0A)
 i2c.mem_write(0xF0, 0x20, 0x02)
 i2c.mem_write(0x00, 0x20, 0x03)
 i2c.mem_write(0x00, 0x20, 0x04)
 i2c.mem_write(0x02, 0x20, 0x05)
-
+'''
 
 def button():
     s = i2c.mem_read(1, 0x20, 0x09)
     f = s[0] >> 4
     f = f ^ 0x0F
     i2c.mem_write(f, 0x20, 0x0A)
-gpio_int = pyb.ExtInt('A14', pyb.ExtInt.IRQ_RISING, pyb.Pin.PULL_NONE, call)
+
+# Pin A14 needs to be specified in pins.csv - this init is an optional one
+# associated with the daughterboard:
+# gpio_int = pyb.ExtInt('A14', pyb.ExtInt.IRQ_RISING, pyb.Pin.PULL_NONE, call)
 
 # timer_a = Timer(2)
 # timer_a.init(freq = 1)
